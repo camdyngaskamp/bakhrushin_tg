@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="card">
+    <div class="muted">Source #{{ source.id }}</div>
+    <form method="post" action="/sources/{{ source.id }}/update">
+      <div class="row" style="margin-bottom: 10px;">
+        <input name="name" value="{{ source.name }}" style="min-width: 320px;" required>
+        <select name="type">
+          <option value="rss" {% if source.type.value=='rss' %}selected{% endif %}>rss</option>
+          <option value="html" {% if source.type.value=='html' %}selected{% endif %}>html</option>
+        </select>
+        <label class="muted">
+          <input type="checkbox" name="enabled" value="1" {% if source.enabled %}checked{% endif %}>
+          enabled
+        </label>
+      </div>
+
+      <div style="margin-bottom: 10px;">
+        <div class="muted">URL</div>
+        <input name="url" value="{{ source.url }}" style="width: 100%;" required>
+      </div>
+
+      <div style="margin-bottom: 10px;">
+        <div class="muted">parser_config (JSON)</div>
+        <textarea name="parser_config" style="min-height: 160px;">{{ parser_config_json }}</textarea>
+        <div class="muted" style="margin-top:6px;">
+          Example: {"include":["театр","премьера"],"exclude":["вакан"],"max_items":20}
+        </div>
+      </div>
+
+      {% if error %}
+        <div class="pill" style="background:#ffe8e8;">{{ error }}</div>
+      {% endif %}
+
+      <div class="row">
+        <button class="btn btn-primary" type="submit">Save</button>
+        <a class="btn" href="/sources">Back</a>
+        <a class="btn" href="{{ source.url }}" target="_blank">Open URL</a>
+      </div>
+    </form>
+  </div>
+{% endblock %}

@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="card">
+    <div class="muted">Post #{{ post.id }} · {{ post.moderation_status }}</div>
+    <div class="muted" style="margin-top:6px;">
+      {% if post.scheduled_at %}
+        Scheduled (MSK): {{ post.scheduled_at.astimezone(MSK).strftime('%Y-%m-%d %H:%M') }}
+      {% endif %}
+      {% if post.posted_at %}
+        {% if post.scheduled_at %} · {% endif %}
+        Published (MSK): {{ post.posted_at.astimezone(MSK).strftime('%Y-%m-%d %H:%M') }}
+      {% endif %}
+    </div>
+    <p><b>{{ post.item.title or "Без заголовка" }}</b></p>
+    <p class="muted"><a href="{{ post.item.url }}" target="_blank">Open source</a></p>
+    <details>
+      <summary class="muted">Extracted text</summary>
+      <p class="muted">{{ post.item.raw_text }}</p>
+    </details>
+
+    {% set translation_fields = {
+      "th": "tg_text_th",
+      "en": "tg_text_en",
+      "es": "tg_text_es"
+    } %}
+
+    <form method="post" action="/posts/{{ post.id }}/update">
+      <label class="muted">Telegram text (RU)</label>
+      <textarea name="tg_text">{{ post.tg_text or "" }}</textarea>
+
+      {% if publish_target and publish_lang != "ru" %}
+        <div class="row" style="margin-top:10px; align-items:center;">
+          <div class="muted">{{ publish_language_label }}</div>
+          <button class="btn" formaction="/posts/{{ post.id }}/translate/{{ publish_lang }}" formmethod="post">Translate → {{ publish_language_label }}</button>
+        </div>
+        {% set field_name = publish_target.field %}
+        {% set field_value = post | attr(field_name) %}
+        <textarea name="{{ field_name }}" placeholder="{{ publish_language_label }} text for publication">{{ field_value or "" }}</textarea>
+      {% endif %}
+
+      {% for lang_code, field_name in translation_fields.items() %}
+        {% if not (publish_target and publish_lang != "ru" and publish_lang == lang_code) %}
+          {% set field_value = post | attr(field_name) %}
+          <input type="hidden" name="{{ field_name }}" value="{{ field_value or '' }}" />
+        {% endif %}
+      {% endfor %}
+
+      <div class="row" style="margin-top:10px;">
+        <button class="btn" formaction="/posts/{{ post.id }}/reject" formmethod="post">Reject</button>
+        <button class="btn btn-primary" formaction="/posts/{{ post.id }}/approve" formmethod="post">Approve</button>
+        <input name="scheduled_at" placeholder="Schedule (MSK) e.g. 2026-02-15 18:00" />
+        <button class="btn btn-primary" formaction="/posts/{{ post.id }}/schedule" formmethod="post">Approve + Schedule</button>
+      </div>
+    </form>
+  </div>
+{% endblock %}

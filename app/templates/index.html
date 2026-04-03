@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="row">
+    <div class="pill">Pending: {{ pending_count }}</div>
+    <div class="pill">Approved: {{ approved_count }}</div>
+    <div class="pill">Scheduled: {{ scheduled_count }}</div>
+  </div>
+
+  {% for p in posts %}
+    <div class="card">
+      <div class="muted">
+        Post #{{ p.id }} · {{ p.moderation_status }} · item #{{ p.item_id }}
+        {% if p.scheduled_at %}
+          · Scheduled (MSK): {{ p.scheduled_at.astimezone(MSK).strftime('%Y-%m-%d %H:%M') }}
+        {% endif %}
+      </div>
+      <div class="muted">
+        <a href="{{ p.item.url }}" target="_blank">{{ p.item.url }}</a>
+      </div>
+      <p><b>{{ p.item.title or "Без заголовка" }}</b></p>
+      <div class="row">
+        <a class="btn btn-primary" href="/posts/{{ p.id }}">Open</a>
+      </div>
+    </div>
+  {% else %}
+    <p class="muted">No posts to show.</p>
+  {% endfor %}
+{% endblock %}
