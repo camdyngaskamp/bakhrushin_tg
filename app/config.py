@@ -3,6 +3,7 @@ from pydantic import Field
 from datetime import datetime
 from typing import Optional
 
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
@@ -21,11 +22,15 @@ class Settings(BaseSettings):
     telegram_proxy_url: str = Field(default="", alias="TELEGRAM_PROXY_URL")  # socks5://user:pass@host:port or http://
 
     # AI
-    polza_api_key: str = Field(alias="POLZA_API_KEY")
-    polza_base_url: str = Field(default="https://api.polza.ai/api/v1", alias="POLZA_BASE_URL")
-    ai_model: str = Field(default="openai/gpt-4o-mini", alias="AI_MODEL")
+    ai_provider: str = Field(default="openai", alias="AI_PROVIDER")
+    ai_api_key: str = Field(default="", alias="AI_API_KEY")
+    ai_base_url: str = Field(default="https://api.openai.com/v1", alias="AI_BASE_URL")
+    # Backward compatibility with legacy polza.ai variable names
+    polza_api_key: str = Field(default="", alias="POLZA_API_KEY")
+    polza_base_url: str = Field(default="", alias="POLZA_BASE_URL")
+    ai_model: str = Field(default="gpt-4o-mini", alias="AI_MODEL")
     ai_temperature: float = Field(default=0.4, alias="AI_TEMPERATURE")
-    tg_translation_model: str = Field(default="openai/gpt-4o-mini", alias="TG_TRANSLATION_MODEL")
+    tg_translation_model: str = Field(default="gpt-4o-mini", alias="TG_TRANSLATION_MODEL")
     tg_translation_style: str = Field(default="neutral", alias="TG_TRANSLATION_STYLE")  # formal|neutral|social
     tg_publish_language: str = Field(default="th", alias="TG_PUBLISH_LANGUAGE")  # th|ru|en|es
 
@@ -65,5 +70,17 @@ class Settings(BaseSettings):
         if not value:
             return None
         return value
+
+    @property
+    def effective_ai_api_key(self) -> str:
+        return (self.ai_api_key or self.polza_api_key or "").strip()
+
+    @property
+    def effective_ai_base_url(self) -> str:
+        if (self.ai_base_url or "").strip():
+            return self.ai_base_url.strip()
+        if (self.polza_base_url or "").strip():
+            return self.polza_base_url.strip()
+        return "https://api.openai.com/v1"
 
 settings = Settings()
