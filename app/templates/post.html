@@ -31,7 +31,16 @@
       {% if publish_target and publish_lang != "ru" %}
         <div class="row" style="margin-top:10px; align-items:center;">
           <div class="muted">{{ publish_language_label }}</div>
-          <button class="btn" formaction="/posts/{{ post.id }}/translate/{{ publish_lang }}" formmethod="post">Translate → {{ publish_language_label }}</button>
+          <button
+            class="btn"
+            formaction="/posts/{{ post.id }}/translate/{{ publish_lang }}"
+            formmethod="post"
+            data-translate-btn="true"
+            data-loading-text="Translating…"
+          >
+            Translate → {{ publish_language_label }}
+          </button>
+          <span class="muted" id="translate-status" aria-live="polite" style="display:none;">Выполняется перевод…</span>
         </div>
         {% set field_name = publish_target.field %}
         {% set field_value = post | attr(field_name) %}
@@ -53,4 +62,23 @@
       </div>
     </form>
   </div>
+  <script>
+    (() => {
+      const form = document.querySelector('form[action="/posts/{{ post.id }}/update"]');
+      if (!form) return;
+
+      form.addEventListener("submit", (event) => {
+        const submitter = event.submitter;
+        if (!submitter || submitter.dataset.translateBtn !== "true") return;
+
+        const status = document.getElementById("translate-status");
+        if (status) {
+          status.style.display = "inline";
+        }
+
+        submitter.disabled = true;
+        submitter.textContent = submitter.dataset.loadingText || "Translating…";
+      });
+    })();
+  </script>
 {% endblock %}
