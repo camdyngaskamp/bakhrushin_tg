@@ -1,12 +1,12 @@
 # Bakhrushin Museum News — Telegram automation
 
-Automated system for collecting theatre-related news from the internet, generating Telegram-ready summaries with AI (OpenAI-compatible provider **polza.ai**), moderating, and publishing to the Telegram channel **@bakhrushinmuseum_news**.
+Automated system for collecting theatre-related news from the internet, generating Telegram-ready summaries with AI (**OpenAI** by default, with support for OpenAI-compatible providers), moderating, and publishing to the Telegram channel **@bakhrushinmuseum_news**.
 
 ## What it does
 
 - Collects news from **RSS** and **HTML** sources
 - Stores data in **PostgreSQL** (with Alembic migrations)
-- Generates summaries via **polza.ai** (OpenAI-compatible)
+- Generates summaries via **OpenAI** (or any OpenAI-compatible provider)
 - Provides a **web moderation panel** (FastAPI + Jinja2)
 - Publishes to Telegram via **aiogram**
 - Runs background jobs via **Celery + Redis + Celery Beat**
@@ -32,7 +32,15 @@ Fill at least:
 
 - `TELEGRAM_BOT_TOKEN`
 - `TELEGRAM_CHANNEL` (default: `@bakhrushinmuseum_news`)
-- `POLZA_API_KEY`
+- `AI_API_KEY`
+
+AI provider is configured in `.env`:
+
+- `AI_PROVIDER=openai`
+- `AI_BASE_URL=https://api.openai.com/v1`
+- `AI_API_KEY=...`
+
+For OpenAI-compatible providers, set `AI_PROVIDER` to any provider label and point `AI_BASE_URL` to that provider's OpenAI-compatible endpoint.
 
 ### 2) Run services
 
