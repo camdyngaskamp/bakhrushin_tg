@@ -1,4 +1,4 @@
-<!-- post.html -->
+<!-- post.html (improved with translation loading indicator) -->
 {% extends "base.html" %}
 {% block content %}
 <div class="card">
@@ -47,9 +47,18 @@
     </div>
 
     {% if publish_target and publish_lang != "ru" %}
-      <div class="row" style="margin: 0.5rem 0 1rem;">
+      <div class="row" style="margin: 0.5rem 0 1rem; align-items: center;">
         <span class="muted">🌍 {{ publish_language_label }}</span>
-        <button class="btn" formaction="/posts/{{ post.id }}/translate/{{ publish_lang }}" formmethod="post">🔄 Translate → {{ publish_language_label }}</button>
+        <button
+          class="btn"
+          formaction="/posts/{{ post.id }}/translate/{{ publish_lang }}"
+          formmethod="post"
+          data-translate-btn="true"
+          data-loading-text="Translating…"
+        >
+          🔄 Translate → {{ publish_language_label }}
+        </button>
+        <span class="muted" id="translate-status" aria-live="polite" style="display: none;">⏳ Translating…</span>
       </div>
       {% set field_name = publish_target.field %}
       {% set field_value = post | attr(field_name) %}
@@ -74,4 +83,24 @@
     </div>
   </form>
 </div>
+
+<script>
+  (() => {
+    const form = document.querySelector('form[action="/posts/{{ post.id }}/update"]');
+    if (!form) return;
+
+    form.addEventListener("submit", (event) => {
+      const submitter = event.submitter;
+      if (!submitter || submitter.dataset.translateBtn !== "true") return;
+
+      const statusSpan = document.getElementById("translate-status");
+      if (statusSpan) {
+        statusSpan.style.display = "inline";
+      }
+
+      submitter.disabled = true;
+      submitter.textContent = submitter.dataset.loadingText || "Translating…";
+    });
+  })();
+</script>
 {% endblock %}
