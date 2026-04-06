@@ -1,4 +1,4 @@
-<!-- post.html (improved with translation loading indicator) -->
+<!-- post.html (with auto-resizing textareas) -->
 {% extends "base.html" %}
 {% block content %}
 <div class="card">
@@ -43,7 +43,7 @@
   <form method="post" action="/posts/{{ post.id }}/update">
     <div style="margin-bottom: 1.2rem;">
       <label>📝 Telegram text (RU)</label>
-      <textarea name="tg_text" rows="4">{{ post.tg_text or "" }}</textarea>
+      <textarea name="tg_text" class="auto-resize" rows="3">{{ post.tg_text or "" }}</textarea>
     </div>
 
     {% if publish_target and publish_lang != "ru" %}
@@ -64,7 +64,7 @@
       {% set field_value = post | attr(field_name) %}
       <div style="margin-bottom: 1.2rem;">
         <label>{{ publish_language_label }} text (Telegram)</label>
-        <textarea name="{{ field_name }}" rows="4">{{ field_value or "" }}</textarea>
+        <textarea name="{{ field_name }}" class="auto-resize" rows="3">{{ field_value or "" }}</textarea>
       </div>
     {% endif %}
 
@@ -84,23 +84,51 @@
   </form>
 </div>
 
+<style>
+  .auto-resize {
+    overflow-y: hidden;      /* hide scrollbar while resizing */
+    resize: vertical;        /* allow user to manually override if needed */
+    transition: height 0.05s ease;
+  }
+</style>
+
 <script>
   (() => {
-    const form = document.querySelector('form[action="/posts/{{ post.id }}/update"]');
-    if (!form) return;
+    // Auto-resize function
+    function autoResize(textarea) {
+      if (!textarea) return;
+      // Reset height to auto to get correct scrollHeight
+      textarea.style.height = 'auto';
+      // Set new height (scrollHeight + small padding for better UX)
+      const newHeight = Math.max(textarea.scrollHeight, 60); // min 60px
+      textarea.style.height = newHeight + 'px';
+    }
 
-    form.addEventListener("submit", (event) => {
-      const submitter = event.submitter;
-      if (!submitter || submitter.dataset.translateBtn !== "true") return;
-
-      const statusSpan = document.getElementById("translate-status");
-      if (statusSpan) {
-        statusSpan.style.display = "inline";
-      }
-
-      submitter.disabled = true;
-      submitter.textContent = submitter.dataset.loadingText || "Translating…";
+    // Apply to all .auto-resize elements
+    const textareas = document.querySelectorAll('.auto-resize');
+    textareas.forEach(textarea => {
+      // Initial resize based on current content
+      autoResize(textarea);
+      // Resize on every input event
+      textarea.addEventListener('input', () => autoResize(textarea));
     });
+
+    // Translation button loading indicator (from previous version)
+    const form = document.querySelector('form[action="/posts/{{ post.id }}/update"]');
+    if (form) {
+      form.addEventListener("submit", (event) => {
+        const submitter = event.submitter;
+        if (!submitter || submitter.dataset.translateBtn !== "true") return;
+
+        const statusSpan = document.getElementById("translate-status");
+        if (statusSpan) {
+          statusSpan.style.display = "inline";
+        }
+
+        submitter.disabled = true;
+        submitter.textContent = submitter.dataset.loadingText || "Translating…";
+      });
+    }
   })();
 </script>
 {% endblock %}
