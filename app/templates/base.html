@@ -1,34 +1,261 @@
+<!-- base.html -->
 <!doctype html>
 <html>
-  <head>
-    <meta charset="utf-8">
-    <title>Bakhrushin News Moderation</title>
-    <style>
-      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 20px; }
-      a { color: #0b57d0; text-decoration: none; }
-      .card { border: 1px solid #ddd; border-radius: 12px; padding: 16px; margin: 12px 0; }
-      .muted { color: #666; font-size: 13px; }
-      textarea { width: 100%; min-height: 220px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-      .btn { padding: 8px 12px; border-radius: 10px; border: 1px solid #ccc; background: #fff; cursor: pointer; }
-      .btn-primary { border-color: #0b57d0; }
-      .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-      .pill { display:inline-block; padding: 2px 8px; border-radius: 999px; background:#f1f3f4; font-size: 12px; }
-      input { padding: 7px 10px; border-radius: 10px; border: 1px solid #ccc; }
-    </style>
-  </head>
-  <body>
-    <h2><a href="/">Bakhrushin Museum News — Moderation</a></h2>
-    <div class="muted" style="margin-bottom: 8px;">Publish language: {{ publish_language_label }}</div>
-    <div class="row" style="margin: 10px 0 18px 0;">
-      <a class="btn" href="/">Posts</a>
-      <a class="btn" href="/sources">Sources</a>
-      <span class="pill">Language: {{ publish_language_label }}</span>
-      {% if web_password_set %}
-      <form method="post" action="/logout" style="display:inline;">
-        <button type="submit" class="btn">Выход</button>
-      </form>
-      {% endif %}
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bakhrushin News Moderation</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #f5f7fb;
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+      line-height: 1.5;
+      color: #1e293b;
+      padding: 2rem 1rem;
+    }
+
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 1.5rem;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.03), 0 2px 6px rgba(0,0,0,0.05);
+      overflow: hidden;
+    }
+
+    /* header */
+    .app-header {
+      padding: 1.5rem 2rem;
+      border-bottom: 1px solid #e9edf2;
+      background: #ffffff;
+    }
+
+    .app-header h2 {
+      font-size: 1.6rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      margin-bottom: 0.25rem;
+    }
+
+    .app-header h2 a {
+      color: #0f172a;
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .app-header h2 a:hover {
+      color: #2563eb;
+    }
+
+    .header-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 0.75rem;
+    }
+
+    .nav-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    /* buttons & links */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.45rem 1rem;
+      border-radius: 2rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      background: #ffffff;
+      border: 1px solid #cfdde6;
+      color: #1e40af;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-decoration: none;
+      line-height: 1.25;
+    }
+
+    .btn-primary {
+      background: #2563eb;
+      border-color: #2563eb;
+      color: white;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+
+    .btn-primary:hover {
+      background: #1d4ed8;
+      border-color: #1d4ed8;
+      transform: translateY(-1px);
+    }
+
+    .btn-danger {
+      border-color: #fecaca;
+      color: #b91c1c;
+    }
+
+    .btn-danger:hover {
+      background: #fef2f2;
+      border-color: #f87171;
+    }
+
+    .btn-outline {
+      border-color: #cfdde6;
+      color: #334155;
+    }
+
+    .btn-outline:hover {
+      background: #f8fafc;
+      border-color: #94a3b8;
+    }
+
+    /* cards */
+    .card {
+      background: white;
+      border-radius: 1.25rem;
+      border: 1px solid #eef2f6;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1.25rem;
+      transition: box-shadow 0.2s, border-color 0.2s;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+    }
+
+    .card:hover {
+      border-color: #cbd5e1;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+    }
+
+    .card-header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 0.75rem;
+    }
+
+    /* pills / badges */
+    .pill {
+      display: inline-block;
+      padding: 0.2rem 0.7rem;
+      border-radius: 2rem;
+      background: #f1f5f9;
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: #0f172a;
+    }
+
+    .pill-pending { background: #ffedd5; color: #9a3412; }
+    .pill-approved { background: #dcfce7; color: #166534; }
+    .pill-scheduled { background: #dbeafe; color: #1e3a8a; }
+    .pill-enabled { background: #dcfce7; color: #166534; }
+    .pill-disabled { background: #f1f5f9; color: #475569; }
+
+    .muted {
+      color: #5b6e8c;
+      font-size: 0.8rem;
+    }
+
+    /* forms */
+    label, .form-label {
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: #1e293b;
+      display: block;
+      margin-bottom: 0.3rem;
+    }
+
+    input, select, textarea {
+      font-family: inherit;
+      font-size: 0.9rem;
+      padding: 0.6rem 0.9rem;
+      border-radius: 1rem;
+      border: 1px solid #cbd5e1;
+      background: #ffffff;
+      transition: 0.2s;
+      width: 100%;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+    }
+
+    textarea {
+      font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+      resize: vertical;
+    }
+
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+    }
+
+    .alert-error {
+      background: #fef2f2;
+      border-left: 4px solid #dc2626;
+      padding: 0.75rem 1rem;
+      border-radius: 1rem;
+      color: #b91c1c;
+      font-size: 0.875rem;
+      margin-bottom: 1rem;
+    }
+
+    pre {
+      background: #f8fafc;
+      padding: 0.75rem;
+      border-radius: 1rem;
+      font-size: 0.75rem;
+      overflow-x: auto;
+      border: 1px solid #eef2f6;
+    }
+
+    /* main content */
+    .content {
+      padding: 1.5rem 2rem 2rem;
+    }
+
+    @media (max-width: 640px) {
+      body { padding: 0.75rem; }
+      .content { padding: 1rem; }
+      .app-header { padding: 1rem 1rem; }
+      .card { padding: 1rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="app-header">
+    <h2><a href="/">🏛 Bakhrushin Museum · News Moderation</a></h2>
+    <div class="header-meta">
+      <div class="nav-links">
+        <a class="btn btn-outline" href="/">📄 Posts</a>
+        <a class="btn btn-outline" href="/sources">📡 Sources</a>
+        <span class="pill">🌐 Language: {{ publish_language_label }}</span>
+        {% if web_password_set %}
+        <form method="post" action="/logout" style="display:inline;">
+          <button type="submit" class="btn btn-outline">🚪 Exit</button>
+        </form>
+        {% endif %}
+      </div>
     </div>
+  </div>
+  <div class="content">
     {% block content %}{% endblock %}
-  </body>
+  </div>
+</div>
+</body>
 </html>

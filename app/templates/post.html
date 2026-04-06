@@ -1,84 +1,77 @@
+<!-- post.html -->
 {% extends "base.html" %}
 {% block content %}
-  <div class="card">
-    <div class="muted">Post #{{ post.id }} · {{ post.moderation_status }}</div>
-    <div class="muted" style="margin-top:6px;">
-      {% if post.scheduled_at %}
-        Scheduled (MSK): {{ post.scheduled_at.astimezone(MSK).strftime('%Y-%m-%d %H:%M') }}
-      {% endif %}
-      {% if post.posted_at %}
-        {% if post.scheduled_at %} · {% endif %}
-        Published (MSK): {{ post.posted_at.astimezone(MSK).strftime('%Y-%m-%d %H:%M') }}
+<div class="card">
+  <div class="card-header">
+    <div class="muted">
+      Post #{{ post.id }} · 
+      {% if post.moderation_status == 'pending' %}
+        <span class="pill pill-pending">pending</span>
+      {% elif post.moderation_status == 'approved' %}
+        <span class="pill pill-approved">approved</span>
+      {% elif post.moderation_status == 'scheduled' %}
+        <span class="pill pill-scheduled">scheduled</span>
+      {% else %}
+        <span class="pill">{{ post.moderation_status }}</span>
       {% endif %}
     </div>
-    <p><b>{{ post.item.title or "Без заголовка" }}</b></p>
-    <p class="muted"><a href="{{ post.item.url }}" target="_blank">Open source</a></p>
-    <details>
-      <summary class="muted">Extracted text</summary>
-      <p class="muted">{{ post.item.raw_text }}</p>
-    </details>
-
-    {% set translation_fields = {
-      "th": "tg_text_th",
-      "en": "tg_text_en",
-      "es": "tg_text_es"
-    } %}
-
-    <form method="post" action="/posts/{{ post.id }}/update">
-      <label class="muted">Telegram text (RU)</label>
-      <textarea name="tg_text">{{ post.tg_text or "" }}</textarea>
-
-      {% if publish_target and publish_lang != "ru" %}
-        <div class="row" style="margin-top:10px; align-items:center;">
-          <div class="muted">{{ publish_language_label }}</div>
-          <button
-            class="btn"
-            formaction="/posts/{{ post.id }}/translate/{{ publish_lang }}"
-            formmethod="post"
-            data-translate-btn="true"
-            data-loading-text="Translating…"
-          >
-            Translate → {{ publish_language_label }}
-          </button>
-          <span class="muted" id="translate-status" aria-live="polite" style="display:none;">Выполняется перевод…</span>
-        </div>
-        {% set field_name = publish_target.field %}
-        {% set field_value = post | attr(field_name) %}
-        <textarea name="{{ field_name }}" placeholder="{{ publish_language_label }} text for publication">{{ field_value or "" }}</textarea>
-      {% endif %}
-
-      {% for lang_code, field_name in translation_fields.items() %}
-        {% if not (publish_target and publish_lang != "ru" and publish_lang == lang_code) %}
-          {% set field_value = post | attr(field_name) %}
-          <input type="hidden" name="{{ field_name }}" value="{{ field_value or '' }}" />
-        {% endif %}
-      {% endfor %}
-
-      <div class="row" style="margin-top:10px;">
-        <button class="btn" formaction="/posts/{{ post.id }}/reject" formmethod="post">Reject</button>
-        <button class="btn btn-primary" formaction="/posts/{{ post.id }}/approve" formmethod="post">Approve</button>
-        <input name="scheduled_at" placeholder="Schedule (MSK) e.g. 2026-02-15 18:00" />
-        <button class="btn btn-primary" formaction="/posts/{{ post.id }}/schedule" formmethod="post">Approve + Schedule</button>
-      </div>
-    </form>
   </div>
-  <script>
-    (() => {
-      const form = document.querySelector('form[action="/posts/{{ post.id }}/update"]');
-      if (!form) return;
+  <div class="muted" style="margin: 0.25rem 0 0.75rem;">
+    {% if post.scheduled_at %}
+      📅 Scheduled (MSK): {{ post.scheduled_at.astimezone(MSK).strftime('%Y-%m-%d %H:%M') }}
+    {% endif %}
+    {% if post.posted_at %}
+      {% if post.scheduled_at %} · {% endif %}
+      ✅ Published (MSK): {{ post.posted_at.astimezone(MSK).strftime('%Y-%m-%d %H:%M') }}
+    {% endif %}
+  </div>
 
-      form.addEventListener("submit", (event) => {
-        const submitter = event.submitter;
-        if (!submitter || submitter.dataset.translateBtn !== "true") return;
+  <p><strong>{{ post.item.title or "Без заголовка" }}</strong></p>
+  <p class="muted"><a href="{{ post.item.url }}" target="_blank">🔗 Open source</a></p>
 
-        const status = document.getElementById("translate-status");
-        if (status) {
-          status.style.display = "inline";
-        }
+  <details style="margin: 0.5rem 0 1rem;">
+    <summary class="muted" style="cursor: pointer;">📄 Extracted text</summary>
+    <pre style="white-space: pre-wrap; margin-top: 0.5rem;">{{ post.item.raw_text }}</pre>
+  </details>
 
-        submitter.disabled = true;
-        submitter.textContent = submitter.dataset.loadingText || "Translating…";
-      });
-    })();
-  </script>
+  {% set translation_fields = {
+    "th": "tg_text_th",
+    "en": "tg_text_en",
+    "es": "tg_text_es"
+  } %}
+
+  <form method="post" action="/posts/{{ post.id }}/update">
+    <div style="margin-bottom: 1.2rem;">
+      <label>📝 Telegram text (RU)</label>
+      <textarea name="tg_text" rows="4">{{ post.tg_text or "" }}</textarea>
+    </div>
+
+    {% if publish_target and publish_lang != "ru" %}
+      <div class="row" style="margin: 0.5rem 0 1rem;">
+        <span class="muted">🌍 {{ publish_language_label }}</span>
+        <button class="btn" formaction="/posts/{{ post.id }}/translate/{{ publish_lang }}" formmethod="post">🔄 Translate → {{ publish_language_label }}</button>
+      </div>
+      {% set field_name = publish_target.field %}
+      {% set field_value = post | attr(field_name) %}
+      <div style="margin-bottom: 1.2rem;">
+        <label>{{ publish_language_label }} text (Telegram)</label>
+        <textarea name="{{ field_name }}" rows="4">{{ field_value or "" }}</textarea>
+      </div>
+    {% endif %}
+
+    {% for lang_code, field_name in translation_fields.items() %}
+      {% if not (publish_target and publish_lang != "ru" and publish_lang == lang_code) %}
+        {% set field_value = post | attr(field_name) %}
+        <input type="hidden" name="{{ field_name }}" value="{{ field_value or '' }}" />
+      {% endif %}
+    {% endfor %}
+
+    <div class="row" style="margin-top: 1rem;">
+      <button class="btn btn-danger" formaction="/posts/{{ post.id }}/reject" formmethod="post">❌ Reject</button>
+      <button class="btn btn-primary" formaction="/posts/{{ post.id }}/approve" formmethod="post">✅ Approve</button>
+      <input name="scheduled_at" placeholder="Schedule MSK e.g. 2026-02-15 18:00" style="width: auto; min-width: 200px;" />
+      <button class="btn btn-primary" formaction="/posts/{{ post.id }}/schedule" formmethod="post">📅 Approve + Schedule</button>
+    </div>
+  </form>
+</div>
 {% endblock %}

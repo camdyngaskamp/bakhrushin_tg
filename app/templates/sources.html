@@ -1,74 +1,75 @@
+<!-- sources.html -->
 {% extends "base.html" %}
 {% block content %}
-  <div class="row">
-    <div class="pill">Enabled: {{ enabled_count }}</div>
-    <div class="pill">Disabled: {{ disabled_count }}</div>
-    <div class="pill">Total: {{ total_count }}</div>
-  </div>
+<div class="row" style="margin-bottom: 1.5rem;">
+  <span class="pill pill-enabled">✅ Enabled: {{ enabled_count }}</span>
+  <span class="pill pill-disabled">⛔ Disabled: {{ disabled_count }}</span>
+  <span class="pill">📊 Total: {{ total_count }}</span>
+</div>
 
-  <div class="card">
-    <form method="post" action="/sources/create">
-      <div class="row">
-        <input name="name" placeholder="Name" style="min-width: 240px;" required>
-        <select name="type">
-          <option value="rss">rss</option>
-          <option value="html">html</option>
-        </select>
-        <input name="url" placeholder="URL" style="min-width: 420px;" required>
-        <button class="btn btn-primary" type="submit">Add source</button>
-      </div>
-      <div class="muted" style="margin-top:6px;">
-        For HTML sources you can later edit <code>parser_config</code> as JSON (include/exclude/max_items).
-      </div>
-    </form>
-  </div>
-
-  <div class="card">
-    <form method="get" action="/sources" class="row">
-      <input name="q" placeholder="Search (name or url)" value="{{ q or '' }}" style="min-width: 420px;">
-      <select name="status">
-        <option value="" {% if not status %}selected{% endif %}>All</option>
-        <option value="enabled" {% if status=='enabled' %}selected{% endif %}>Enabled</option>
-        <option value="disabled" {% if status=='disabled' %}selected{% endif %}>Disabled</option>
+<div class="card">
+  <form method="post" action="/sources/create">
+    <div class="row" style="margin-bottom: 0.5rem;">
+      <input name="name" placeholder="Name" style="min-width: 180px;" required>
+      <select name="type">
+        <option value="rss">rss</option>
+        <option value="html">html</option>
       </select>
-      <button class="btn" type="submit">Filter</button>
-      <a class="btn" href="/sources">Reset</a>
-    </form>
-  </div>
-
-  {% for s in sources %}
-    <div class="card">
-      <div class="row" style="justify-content: space-between;">
-        <div>
-          <div><b>{{ s.name }}</b> <span class="pill">{{ s.type.value }}</span> {% if not s.enabled %}<span class="pill">disabled</span>{% endif %}</div>
-<div class="muted"><a href="{{ s.url }}" target="_blank">{{ s.url }}</a></div>
-{% if s.last_status_code or s.last_error %}
-  <div class="muted" style="margin-top:4px;">
-    Last test:
-    {% if s.last_status_code %}<b>{{ s.last_status_code }}</b>{% else %}<b>ERR</b>{% endif %}
-    {% if s.last_checked_at %} at {{ s.last_checked_at }}{% endif %}
-    {% if s.last_error %}<span style="color:#a33;"> — {{ s.last_error[:160] }}</span>{% endif %}
-  </div>
-{% endif %}
-        </div>
-        <div class="row">
-<form method="post" action="/sources/{{ s.id }}/test" style="display:inline;">
-  <button class="btn" type="submit">Test</button>
-</form>
-          <a class="btn" href="/sources/{{ s.id }}">Edit</a>
-          <form method="post" action="/sources/{{ s.id }}/toggle" style="display:inline;">
-            <button class="btn" type="submit">{% if s.enabled %}Disable{% else %}Enable{% endif %}</button>
-          </form>
-          <form method="post" action="/sources/{{ s.id }}/delete" style="display:inline;" onsubmit="return confirm('Delete source #{{ s.id }}?');">
-            <button class="btn" type="submit">Delete</button>
-          </form>
-        </div>
-      </div>
-      {% if s.parser_config %}
-        <pre style="background:#f6f8fa; padding:10px; border-radius:10px; overflow:auto; font-size:12px;">{{ s.parser_config | tojson(indent=2) }}</pre>
-      {% endif %}
+      <input name="url" placeholder="https://example.com/feed.xml" style="min-width: 320px;" required>
+      <button class="btn btn-primary" type="submit">➕ Add source</button>
     </div>
-  {% else %}
-    <p class="muted">No sources found.</p>
-  {% endfor %}
+    <div class="muted">💡 HTML sources need a <code>parser_config</code> (JSON) – edit after creation.</div>
+  </form>
+</div>
+
+<div class="card">
+  <form method="get" action="/sources" class="row">
+    <input name="q" placeholder="Search (name or url)" value="{{ q or '' }}" style="min-width: 240px;">
+    <select name="status">
+      <option value="" {% if not status %}selected{% endif %}>All</option>
+      <option value="enabled" {% if status=='enabled' %}selected{% endif %}>Enabled</option>
+      <option value="disabled" {% if status=='disabled' %}selected{% endif %}>Disabled</option>
+    </select>
+    <button class="btn btn-outline" type="submit">🔍 Filter</button>
+    <a class="btn btn-outline" href="/sources">Reset</a>
+  </form>
+</div>
+
+{% for s in sources %}
+<div class="card">
+  <div class="card-header">
+    <div>
+      <strong>{{ s.name }}</strong>
+      <span class="pill">{{ s.type.value }}</span>
+      {% if not s.enabled %}<span class="pill pill-disabled">disabled</span>{% endif %}
+    </div>
+    <div class="row" style="gap: 0.5rem;">
+      <form method="post" action="/sources/{{ s.id }}/test" style="display:inline;">
+        <button class="btn btn-outline" type="submit">🔄 Test</button>
+      </form>
+      <a class="btn btn-outline" href="/sources/{{ s.id }}">✏️ Edit</a>
+      <form method="post" action="/sources/{{ s.id }}/toggle" style="display:inline;">
+        <button class="btn btn-outline" type="submit">{% if s.enabled %}⛔ Disable{% else %}✅ Enable{% endif %}</button>
+      </form>
+      <form method="post" action="/sources/{{ s.id }}/delete" style="display:inline;" onsubmit="return confirm('Delete source #{{ s.id }}?');">
+        <button class="btn btn-danger" type="submit">🗑 Delete</button>
+      </form>
+    </div>
+  </div>
+  <div class="muted" style="word-break: break-all;"><a href="{{ s.url }}" target="_blank">{{ s.url }}</a></div>
+  {% if s.last_status_code or s.last_error %}
+    <div class="muted" style="margin-top: 0.5rem;">
+      Last test:
+      {% if s.last_status_code %}<strong>{{ s.last_status_code }}</strong>{% else %}<strong>ERR</strong>{% endif %}
+      {% if s.last_checked_at %} at {{ s.last_checked_at }}{% endif %}
+      {% if s.last_error %}<span style="color:#b91c1c;"> — {{ s.last_error[:160] }}</span>{% endif %}
+    </div>
+  {% endif %}
+  {% if s.parser_config %}
+    <pre>{{ s.parser_config | tojson(indent=2) }}</pre>
+  {% endif %}
+</div>
+{% else %}
+  <div class="card muted" style="text-align: center;">📭 No sources found.</div>
+{% endfor %}
 {% endblock %}

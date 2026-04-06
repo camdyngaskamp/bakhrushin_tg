@@ -1,28 +1,43 @@
+<!-- index.html -->
 {% extends "base.html" %}
 {% block content %}
-  <div class="row">
-    <div class="pill">Pending: {{ pending_count }}</div>
-    <div class="pill">Approved: {{ approved_count }}</div>
-    <div class="pill">Scheduled: {{ scheduled_count }}</div>
-  </div>
+<div class="row" style="margin-bottom: 1.5rem;">
+  <span class="pill pill-pending">⏳ Pending: {{ pending_count }}</span>
+  <span class="pill pill-approved">✅ Approved: {{ approved_count }}</span>
+  <span class="pill pill-scheduled">📅 Scheduled: {{ scheduled_count }}</span>
+</div>
 
-  {% for p in posts %}
-    <div class="card">
-      <div class="muted">
-        Post #{{ p.id }} · {{ p.moderation_status }} · item #{{ p.item_id }}
-        {% if p.scheduled_at %}
-          · Scheduled (MSK): {{ p.scheduled_at.astimezone(MSK).strftime('%Y-%m-%d %H:%M') }}
-        {% endif %}
-      </div>
-      <div class="muted">
-        <a href="{{ p.item.url }}" target="_blank">{{ p.item.url }}</a>
-      </div>
-      <p><b>{{ p.item.title or "Без заголовка" }}</b></p>
-      <div class="row">
-        <a class="btn btn-primary" href="/posts/{{ p.id }}">Open</a>
-      </div>
+{% for p in posts %}
+<div class="card">
+  <div class="card-header">
+    <div class="muted">
+      Post #{{ p.id }} · 
+      {% if p.moderation_status == 'pending' %}
+        <span class="pill pill-pending">pending</span>
+      {% elif p.moderation_status == 'approved' %}
+        <span class="pill pill-approved">approved</span>
+      {% elif p.moderation_status == 'scheduled' %}
+        <span class="pill pill-scheduled">scheduled</span>
+      {% else %}
+        <span class="pill">{{ p.moderation_status }}</span>
+      {% endif %}
+      · item #{{ p.item_id }}
     </div>
-  {% else %}
-    <p class="muted">No posts to show.</p>
-  {% endfor %}
+    <div class="muted">
+      {% if p.scheduled_at %}
+        📅 Scheduled (MSK): {{ p.scheduled_at.astimezone(MSK).strftime('%Y-%m-%d %H:%M') }}
+      {% endif %}
+    </div>
+  </div>
+  <div class="muted" style="margin-bottom: 0.5rem;">
+    <a href="{{ p.item.url }}" target="_blank" style="word-break: break-all;">{{ p.item.url }}</a>
+  </div>
+  <p><strong>{{ p.item.title or "Без заголовка" }}</strong></p>
+  <div class="row" style="margin-top: 0.5rem;">
+    <a class="btn btn-primary" href="/posts/{{ p.id }}">✏️ Open & moderate</a>
+  </div>
+</div>
+{% else %}
+  <div class="card muted" style="text-align: center;">✨ No posts to show.</div>
+{% endfor %}
 {% endblock %}
