@@ -65,6 +65,9 @@ alembic.ini.bak
 *.bak
 *.backup
 
+# Backups
+backups/
+
 # OS
 Thumbs.db
 .DS_Store
