@@ -15,6 +15,10 @@ Pipeline:
 
 `Sources → Items → AI → Posts (pending) → Approve/Schedule → Telegram`
 
+Optional full automation mode:
+
+`Sources → Items → AI → Auto-translate → Auto-approve → Telegram`
+
 ## Requirements
 
 - Docker + Docker Compose (Compose v2)
@@ -80,6 +84,21 @@ Statuses:
 - `scheduled` — publish at `scheduled_at`
 - `posted` — published successfully
 - `failed` — publishing failed (see `editor_notes`)
+
+### Optional: fully automatic translation + publishing
+
+Enable these `.env` flags:
+
+```env
+AUTO_PUBLISH_AFTER_AI_SELECTION=true
+AUTO_TRANSLATE_AFTER_AI_SELECTION=true
+```
+
+Behavior:
+
+- right after AI summary generation, post is automatically translated to `TG_PUBLISH_LANGUAGE` (for non-`ru` languages);
+- post is automatically marked as `approved`;
+- publisher task is triggered automatically, so no manual moderation is required.
 
 ### Approve publishes immediately
 

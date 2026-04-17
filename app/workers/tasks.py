@@ -15,6 +15,7 @@ from app.collectors.html import fetch_html_entries
 from app.parsers.extract import extract_main_text
 from app.utils.text import text_hash, normalize_text
 from app.ai.summarize import generate_post
+from app.ai.translate import translate_ru, SUPPORTED_TRANSLATION_LANGS
 from app.tg.sender import send_to_channel
 from rapidfuzz.fuzz import ratio
 from app.config import settings
@@ -38,6 +39,38 @@ def similar_enough(a: str, b: str) -> bool:
     if not a or not b:
         return False
     return ratio(a[:1500], b[:1500]) >= 93
+
+
+def _set_translated_text(post: Post, target_lang: str, translated: str) -> None:
+    if target_lang == "th":
+        post.tg_text_th = translated
+    elif target_lang == "en":
+        post.tg_text_en = translated
+    elif target_lang == "es":
+        post.tg_text_es = translated
+    elif target_lang == "it":
+        post.tg_text_it = translated
+
+
+def _auto_translate_post_if_needed(post: Post) -> tuple[bool, str | None]:
+    lang = (settings.tg_publish_language or "").strip().lower()
+    if lang == "ru":
+        return True, None
+    if lang not in SUPPORTED_TRANSLATION_LANGS:
+        return False, f"Unsupported TG_PUBLISH_LANGUAGE for auto-translation: {settings.tg_publish_language}"
+    if not settings.auto_translate_after_ai_selection:
+        return False, "AUTO_TRANSLATE_AFTER_AI_SELECTION=false and non-RU publish language requires translation"
+
+    source_text = (post.tg_text or "").strip()
+    if not source_text:
+        return False, "Cannot auto-translate empty tg_text"
+
+    translated = translate_ru(source_text, target_lang=lang, style=settings.tg_translation_style)
+    if not translated.strip():
+        return False, f"Empty translation output for language: {lang}"
+
+    _set_translated_text(post, lang, translated.strip())
+    return True, None
 
 
 def _cutoff_utc(days: int | None, absolute: dt.datetime | None) -> dt.datetime | None:
@@ -276,6 +309,7 @@ def generate_ai_for_new_items(limit: int = 20):
     cutoff_ai = _cutoff_utc(settings.ai_not_before_days, settings.ai_not_before)
     skipped_ai_cutoff = 0
     with SessionLocal() as db:
+        auto_approved_count = 0
         items = db.scalars(
             select(Item).where(Item.status == ItemStatus.new).order_by(Item.created_at.asc()).limit(limit)
         ).all()
@@ -327,17 +361,33 @@ def generate_ai_for_new_items(limit: int = 20):
                 tg_media={},
                 style_version="v1",
             )
+            if settings.auto_publish_after_ai_selection:
+                try:
+                    ok, reason = _auto_translate_post_if_needed(post)
+                    if not ok:
+                        post.moderation_status = ModerationStatus.failed
+                        post.editor_notes = (reason or "Auto-translate failed")[:2000]
+                    else:
+                        post.moderation_status = ModerationStatus.approved
+                        auto_approved_count += 1
+                except Exception as ex:
+                    post.moderation_status = ModerationStatus.failed
+                    post.editor_notes = f"Auto-translate exception: {ex}"[:2000]
             db.add(post)
             it.status = ItemStatus.ai_ready
 
         db.commit()
 
         logger.info(
-            "[ai] batch=%s skipped_ai_cutoff=%s cutoff_ai=%s",
+            "[ai] batch=%s skipped_ai_cutoff=%s auto_approved=%s cutoff_ai=%s",
             len(items),
             skipped_ai_cutoff,
+            auto_approved_count,
             cutoff_ai.isoformat() if cutoff_ai else None,
         )
+
+    if settings.auto_publish_after_ai_selection and auto_approved_count > 0:
+        publish_scheduled_posts.delay()
 
 @shared_task(name="app.workers.tasks.publish_scheduled_posts")
 def publish_scheduled_posts(batch: int = 10):
