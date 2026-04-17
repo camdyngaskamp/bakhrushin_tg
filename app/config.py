@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     ai_temperature: float = Field(default=0.4, alias="AI_TEMPERATURE")
     tg_translation_model: str = Field(default="gpt-4o-mini", alias="TG_TRANSLATION_MODEL")
     tg_translation_style: str = Field(default="neutral", alias="TG_TRANSLATION_STYLE")  # formal|neutral|social
-    tg_publish_language: str = Field(default="th", alias="TG_PUBLISH_LANGUAGE")  # th|ru|en|es
+    tg_publish_language: str = Field(default="th", alias="TG_PUBLISH_LANGUAGE")  # th|ru|en|es|it
 
     # Cutoffs
     # If set, collectors will skip items older than N days (sliding window)
