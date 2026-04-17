@@ -26,6 +26,11 @@ LANG_PROMPTS = {
         "system": "You translate Russian cultural news into natural Latin American Spanish for Telegram posts.",
         "default_tone": "Amable e informativo tono editorial de museo, sin jerga innecesaria.",
     },
+    "it": {
+        "name": "Italian",
+        "system": "You translate Russian cultural news into natural Italian for Telegram posts.",
+        "default_tone": "Tono editoriale museale, chiaro, sobrio e coinvolgente.",
+    },
 }
 
 SUPPORTED_TRANSLATION_LANGS = tuple(sorted(LANG_PROMPTS.keys()))

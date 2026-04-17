@@ -77,6 +77,7 @@ class Post(Base):
     tg_text_th = Column(Text, nullable=True)  # Thai text for publication
     tg_text_en = Column(Text, nullable=True)  # English text for publication
     tg_text_es = Column(Text, nullable=True)  # Spanish text for publication
+    tg_text_it = Column(Text, nullable=True)  # Italian text for publication
     tg_media = Column(JSONB, nullable=False, default=dict)
 
     style_version = Column(String(32), nullable=False, default="v1")

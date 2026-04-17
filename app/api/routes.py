@@ -23,6 +23,7 @@ TRANSLATION_TARGETS = {
     "th": {"field": "tg_text_th", "label": "Thai"},
     "en": {"field": "tg_text_en", "label": "English"},
     "es": {"field": "tg_text_es", "label": "Spanish"},
+    "it": {"field": "tg_text_it", "label": "Italian"},
 }
 
 PUBLISH_LANGUAGE_LABELS = {
@@ -30,6 +31,7 @@ PUBLISH_LANGUAGE_LABELS = {
     "th": "Thai (TH)",
     "en": "English (EN)",
     "es": "Spanish (ES)",
+    "it": "Italian (IT)",
 }
 
 def _publish_language_label() -> str:
@@ -130,6 +132,7 @@ def update_post(
     tg_text_th: str = Form(""),
     tg_text_en: str = Form(""),
     tg_text_es: str = Form(""),
+    tg_text_it: str = Form(""),
     db: Session = Depends(get_db),
 ):
     post = db.get(Post, post_id)
@@ -139,6 +142,7 @@ def update_post(
     post.tg_text_th = _normalize_or_none(tg_text_th)
     post.tg_text_en = _normalize_or_none(tg_text_en)
     post.tg_text_es = _normalize_or_none(tg_text_es)
+    post.tg_text_it = _normalize_or_none(tg_text_it)
     db.commit()
     return RedirectResponse(url=f"/posts/{post_id}", status_code=303)
 
@@ -149,6 +153,7 @@ def reject_post(
     tg_text_th: str = Form(None),
     tg_text_en: str = Form(None),
     tg_text_es: str = Form(None),
+    tg_text_it: str = Form(None),
     db: Session = Depends(get_db),
 ):
     post = db.get(Post, post_id)
@@ -162,6 +167,8 @@ def reject_post(
         post.tg_text_en = _normalize_or_none(tg_text_en)
     if tg_text_es is not None:
         post.tg_text_es = _normalize_or_none(tg_text_es)
+    if tg_text_it is not None:
+        post.tg_text_it = _normalize_or_none(tg_text_it)
     post.moderation_status = ModerationStatus.rejected
     db.commit()
     return RedirectResponse(url="/", status_code=303)
@@ -173,6 +180,7 @@ def approve_post(
     tg_text_th: str = Form(None),
     tg_text_en: str = Form(None),
     tg_text_es: str = Form(None),
+    tg_text_it: str = Form(None),
     db: Session = Depends(get_db),
 ):
     post = db.get(Post, post_id)
@@ -186,6 +194,8 @@ def approve_post(
         post.tg_text_en = _normalize_or_none(tg_text_en)
     if tg_text_es is not None:
         post.tg_text_es = _normalize_or_none(tg_text_es)
+    if tg_text_it is not None:
+        post.tg_text_it = _normalize_or_none(tg_text_it)
     post.moderation_status = ModerationStatus.approved
     db.commit()
     return RedirectResponse(url="/", status_code=303)
@@ -197,6 +207,7 @@ def schedule_post(
     tg_text_th: str = Form(None),
     tg_text_en: str = Form(None),
     tg_text_es: str = Form(None),
+    tg_text_it: str = Form(None),
     scheduled_at: str = Form(...),
     db: Session = Depends(get_db),
 ):
@@ -211,6 +222,8 @@ def schedule_post(
         post.tg_text_en = _normalize_or_none(tg_text_en)
     if tg_text_es is not None:
         post.tg_text_es = _normalize_or_none(tg_text_es)
+    if tg_text_it is not None:
+        post.tg_text_it = _normalize_or_none(tg_text_it)
 
     # Accept 'YYYY-MM-DD HH:MM' in Moscow time (MSK)
     try:

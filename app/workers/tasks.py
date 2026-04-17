@@ -367,6 +367,9 @@ def publish_scheduled_posts(batch: int = 10):
                 elif lang == "es":
                     text = (p.tg_text_es or "").strip()
                     fail_hint = "Missing Spanish text (tg_text_es). Use Translate → Spanish in UI."
+                elif lang == "it":
+                    text = (p.tg_text_it or "").strip()
+                    fail_hint = "Missing Italian text (tg_text_it). Use Translate → Italian in UI."
                 else:
                     text = None
                     fail_hint = f"Unsupported TG_PUBLISH_LANGUAGE: {settings.tg_publish_language}"
