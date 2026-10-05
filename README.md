@@ -259,3 +259,5 @@ This project uses `migrations/env.py` to load `DATABASE_URL` from `.env` and set
 ## Updating the deployed application
 
 [Инструкция по установке обновления с браузерным сборщиком](docs/UPDATE_BROWSER_COLLECTOR.md).
+
+[Перенос cookies из обычного Chrome на рабочий сервер](docs/CHROME_COOKIES_TO_SERVER.md).
