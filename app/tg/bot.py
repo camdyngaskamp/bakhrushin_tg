@@ -2,7 +2,7 @@ from __future__ import annotations
 import asyncio
 import datetime as dt
 
-from aiogram import Bot, Dispatcher, F
+from aiogram import Dispatcher, F
 from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
@@ -10,6 +10,7 @@ from sqlalchemy import select
 from app.config import settings
 from app.db.session import SessionLocal
 from app.db.models import Post, ModerationStatus
+from app.tg.sender import get_bot
 
 dp = Dispatcher()
 
@@ -134,7 +135,7 @@ async def edit_text(m: Message):
     await m.answer(f"Updated post #{post_id}.", reply_markup=kb_for_post(post_id))
 
 async def main():
-    bot = Bot(token=settings.telegram_bot_token)
+    bot = get_bot()
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
