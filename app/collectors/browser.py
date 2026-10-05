@@ -96,10 +96,13 @@ def browser_fetcher(config=None, *, headless=True):
     timeout = int(cfg.get("browser_timeout_ms", 45000))
     if not 1000 <= timeout <= 120000:
         raise ValueError("browser_timeout_ms must be between 1000 and 120000")
+    channel = cfg.get("browser_channel", "chromium")
+    if channel not in ("chromium", "chrome"):
+        raise ValueError("browser_channel must be chromium or chrome")
     with browser_state(cfg.get("browser_state_name")) as state:
         saved_state = state.load() if state is not None else None
         with sync_playwright() as playwright:
-            browser = playwright.chromium.launch(headless=headless, channel="chromium")
+            browser = playwright.chromium.launch(headless=headless, channel=channel)
             try:
                 options = {"locale": "ru-RU"}
                 if saved_state is not None:

@@ -8,9 +8,14 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--url', required=True)
     parser.add_argument('--name', required=True)
+    parser.add_argument('--channel', choices=('chromium', 'chrome'), default='chromium',
+                        help='chrome uses installed Google Chrome in a separate browser context')
     parser.add_argument('--wait-selector', required=True, help='Selector identifying actual news content')
     args = parser.parse_args()
-    config = {'fetch_mode': 'browser', 'browser_state_name': args.name}
+    config = {
+        'fetch_mode': 'browser', 'browser_state_name': args.name,
+        'browser_channel': args.channel,
+    }
     with browser_fetcher(config, headless=False) as fetcher:
         page = fetcher.context.new_page()
         page.goto(args.url, wait_until='domcontentloaded', timeout=45000)

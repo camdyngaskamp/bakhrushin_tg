@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import httpx
 
@@ -92,6 +92,15 @@ class BrowserCollectorTests(unittest.TestCase):
         with self.assertRaises(BrowserFetchError):
             BrowserFetcher(context, state=state).fetch('https://example.org')
         state.save.assert_not_called()
+
+    def test_installed_chrome_channel_is_used(self):
+        with patch('playwright.sync_api.sync_playwright') as start:
+            playwright = start.return_value.__enter__.return_value
+            browser = playwright.chromium.launch.return_value
+            with browser_fetcher({'fetch_mode': 'browser', 'browser_channel': 'chrome'}, headless=False):
+                pass
+            playwright.chromium.launch.assert_called_once_with(headless=False, channel='chrome')
+            browser.close.assert_called_once()
 
     def test_http_mode_does_not_require_playwright(self):
         with browser_fetcher({}) as fetcher:
