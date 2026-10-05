@@ -55,63 +55,28 @@ AI-обработку и публикацию во время проверки, 
 
 ## Запустить сбор только Большого театра
 
-Скопируйте команду целиком, включая первую строку и завершающий `PY`:
+Выполните из каталога проекта:
 
 ```bash
-docker compose exec -T celery_worker python - <<'PY'
-import datetime as dt
-import logging
-
-from sqlalchemy import select, func
-from app.db.session import SessionLocal
-from app.db.models import Source, SourceType, Item
-from app.workers.tasks import _collect_html_source
-
-logging.basicConfig(level=logging.INFO)
-
-with SessionLocal() as db:
-    sources = db.scalars(
-        select(Source).where(
-            Source.url.in_([
-                'https://bolshoi.ru/news',
-                'https://bolshoi.ru/news/',
-            ])
-        )
-    ).all()
-    if not sources:
-        raise SystemExit('Источник Большого театра не найден')
-    if len(sources) != 1:
-        raise SystemExit('Найдено несколько источников: устраните дубликаты перед сбором')
-    source = sources[0]
-    if source.type != SourceType.html:
-        raise SystemExit('Источник должен иметь тип html')
-
-    def item_count():
-        return db.scalar(
-            select(func.count(Item.id)).where(Item.source_id == source.id)
-        )
-
-    before = item_count()
-    print(f'Собираем: {source.name}, ID={source.id}', flush=True)
-
-    _collect_html_source(db, source)
-
-    source.last_status_code = 200
-    source.last_error = None
-    source.last_checked_at = dt.datetime.now(dt.timezone.utc)
-    source.fail_streak = 0
-    db.commit()
-
-    print('Добавлено материалов:', item_count() - before)
-    print('Статусы всех материалов этого источника:')
-    for status, count in db.execute(
-        select(Item.status, func.count(Item.id))
-        .where(Item.source_id == source.id)
-        .group_by(Item.status)
-    ):
-        print(f'  {status.value}: {count}')
-PY
+./scripts/collect_bolshoi.sh
 ```
+
+Если права исполнения не сохранены при переносе файлов, используйте:
+
+```bash
+bash scripts/collect_bolshoi.sh
+```
+
+Справка:
+
+```bash
+./scripts/collect_bolshoi.sh --help
+```
+
+Скрипт сам переходит в корень проекта, поэтому его можно вызывать и по абсолютному
+пути из другого каталога. Он проверяет наличие Docker Compose и выполняет
+сбор в уже работающем `celery_worker`. Сервисы автоматически не запускаются и
+не останавливаются. При ошибке возвращается ненулевой код завершения.
 
 Команда использует настройки источника из БД и запускает тот же HTML-сборщик,
 что и регулярная задача. Она выполняется сразу в текущем терминале, а не через
