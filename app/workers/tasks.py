@@ -12,6 +12,7 @@ from app.db.session import SessionLocal
 from app.db.models import Source, SourceType, Item, ItemStatus, Post, ModerationStatus
 from app.collectors.rss import fetch_rss
 from app.collectors.html import fetch_html_entries
+from app.collectors.browser import browser_fetcher
 from app.parsers.extract import extract_main_text
 from app.utils.text import text_hash, normalize_text
 from app.ai.summarize import generate_post
@@ -228,10 +229,15 @@ def _collect_rss_source(db: Session, src: Source):
 
 
 def _collect_html_source(db: Session, src: Source):
+    with browser_fetcher(src.parser_config) as fetcher:
+        _collect_html_source_with_fetcher(db, src, fetcher)
+
+
+def _collect_html_source_with_fetcher(db: Session, src: Source, fetcher):
     cutoff = _cutoff_utc(settings.news_not_before_days, settings.news_not_before)
     skipped_cutoff = 0
     added = 0
-    entries = fetch_html_entries(url=src.url, parser_config=src.parser_config)
+    entries = fetch_html_entries(url=src.url, parser_config=src.parser_config, fetcher=fetcher)
     for e in entries:
         url = e.get("url")
         if not url:
@@ -267,8 +273,10 @@ def _collect_html_source(db: Session, src: Source):
         raw_text = ""
         raw_html = ""
         try:
-            raw_text, raw_html = extract_main_text(url)
+            raw_text, raw_html = extract_main_text(url, fetcher=fetcher)
         except Exception:
+            if fetcher is not None:
+                raise
             raw_text = normalize_text(summary) or normalize_text(title)
             raw_html = None
 

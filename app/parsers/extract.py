@@ -8,12 +8,15 @@ from app.utils.text import normalize_text
 
 HEADERS = {"User-Agent": "BakhrushinMuseumNewsBot/1.0 (+https://www.bakhrushinmuseum.ru/)"}
 
-def extract_main_text(url: str, timeout: float = 20.0) -> tuple[str, str]:
+def extract_main_text(url: str, timeout: float = 20.0, *, fetcher=None) -> tuple[str, str]:
     """Return (text, html). Uses trafilatura first, falls back to BeautifulSoup."""
-    with httpx.Client(timeout=timeout, headers=HEADERS, follow_redirects=True) as client:
-        r = client.get(url)
-        r.raise_for_status()
-        html = r.text
+    if fetcher is not None:
+        html = fetcher.fetch(url)
+    else:
+        with httpx.Client(timeout=timeout, headers=HEADERS, follow_redirects=True) as client:
+            r = client.get(url)
+            r.raise_for_status()
+            html = r.text
 
     text = ""
     try:

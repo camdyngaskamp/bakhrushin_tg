@@ -37,7 +37,7 @@ def published_from_url(url: str) -> dt.datetime | None:
     return dt.datetime(y, mo, d, tzinfo=dt.timezone.utc)
 
 
-def fetch_html_entries(url: str, parser_config: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+def fetch_html_entries(url: str, parser_config: dict[str, Any] | None = None, *, fetcher=None) -> list[dict[str, Any]]:
     """Fetch a listing page and extract links as pseudo-feed entries.
 
     Returns list of dicts compatible with RSS fetcher output:
@@ -53,6 +53,10 @@ def fetch_html_entries(url: str, parser_config: dict[str, Any] | None = None) ->
       - max_items: int (optional, default 50)
     """
     cfg = parser_config or {}
+    if fetcher is None and cfg.get("fetch_mode") == "browser":
+        from app.collectors.browser import browser_fetcher
+        with browser_fetcher(cfg) as browser:
+            return fetch_html_entries(url, cfg, fetcher=browser)
     base_url = (cfg.get("base_url") or url).strip()
     list_selector = (cfg.get("list_selector") or "").strip() or None
     link_selector = (cfg.get("link_selector") or "a[href]").strip()
@@ -63,10 +67,13 @@ def fetch_html_entries(url: str, parser_config: dict[str, Any] | None = None) ->
 
     base_host = urlparse(base_url).netloc.lower()
 
-    with httpx.Client(timeout=30.0, follow_redirects=True, headers=HEADERS) as client:
-        r = client.get(url)
-        r.raise_for_status()
-        html = r.text
+    if fetcher is not None:
+        html = fetcher.fetch(url, wait_selector=cfg.get("browser_wait_selector") or link_selector)
+    else:
+        with httpx.Client(timeout=30.0, follow_redirects=True, headers=HEADERS) as client:
+            r = client.get(url)
+            r.raise_for_status()
+            html = r.text
 
     soup = BeautifulSoup(html, "lxml")
     scope = soup

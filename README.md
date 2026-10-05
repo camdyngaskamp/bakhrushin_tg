@@ -123,7 +123,34 @@ You can:
 
 ### When a source returns 401/403
 
-Some sites block bots. Use the **Test** button and disable such sources, or switch to a different URL/feed.
+For HTML sources with JavaScript protection, enable Playwright Chromium in the
+source's `parser_config` (merge these keys into the existing configuration):
+
+```json
+{
+  "fetch_mode": "browser",
+  "browser_timeout_ms": 45000,
+  "browser_wait_selector": "a[href*='/news/']"
+}
+```
+
+The worker uses one browser context for the listing and full articles, preserving
+cookies during the source run. The **Test** button uses the same transport.
+The selector is optional and should identify loaded content, not navigation.
+Timeouts and unresolved challenges are reported as source errors; CAPTCHA solving
+is not implemented. HTTP remains the default for other sources.
+
+Docker installs Chromium and its system dependencies. Rebuild after updating:
+`docker compose up -d --build api celery_worker`.
+For a local installation: `python -m playwright install --with-deps chromium`
+after installing requirements ([Playwright installation](https://playwright.dev/python/docs/browsers)).
+
+The Bolshoi seed configuration enables browser mode. For an existing database,
+merge these keys into the source configuration in the web panel. Re-running the
+seed also updates existing sources, but overwrites their configurations with seed
+defaults. Browser mode does not add pagination or extraction
+of news cards without links. Access still depends on the website's protection
+and the server IP.
 
 ## Cutoff filters (avoid old news)
 
@@ -223,3 +250,7 @@ This project uses `migrations/env.py` to load `DATABASE_URL` from `.env` and set
 - `app/workers/` — Celery tasks
 - `app/tg/` — Telegram sender
 - `migrations/` — Alembic migrations
+
+## Updating the deployed application
+
+[Инструкция по установке обновления с браузерным сборщиком](docs/UPDATE_BROWSER_COLLECTOR.md).

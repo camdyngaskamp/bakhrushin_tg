@@ -14,6 +14,8 @@ from app.db.session import get_db
 from app.db.models import Post, ModerationStatus, Source, SourceType
 from app.ai.translate import translate_ru
 from app.config import settings
+from app.collectors.browser import browser_fetcher
+from app.collectors.html import fetch_html_entries
 from app.web.security import login_url, sanitize_next_path
 
 router = APIRouter()
@@ -353,10 +355,17 @@ def test_source(source_id: int, db: Session = Depends(get_db)):
     err: str | None = None
 
     try:
-        with httpx.Client(timeout=20.0, follow_redirects=True, headers=UA) as client:
-            r = client.get(src.url)
-            status_code = r.status_code
+        if src.type == SourceType.html and (src.parser_config or {}).get("fetch_mode") == "browser":
+            with browser_fetcher(src.parser_config) as fetcher:
+                fetch_html_entries(src.url, src.parser_config, fetcher=fetcher)
+            status_code = 200
+        else:
+            with httpx.Client(timeout=20.0, follow_redirects=True, headers=UA) as client:
+                r = client.get(src.url)
+                status_code = r.status_code
     except Exception as ex:
+        if isinstance(ex, httpx.HTTPStatusError):
+            status_code = ex.response.status_code
         err = str(ex)
 
     src.last_status_code = status_code

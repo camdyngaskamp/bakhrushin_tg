@@ -1,0 +1,195 @@
+# Обновление рабочего приложения: браузерный сборщик
+
+Инструкция для развёртывания через `docker-compose.yml` этого проекта.
+Обновление добавляет Playwright/Chromium, браузерную загрузку HTML-источников
+и исправляет синтаксис Telegram-бота. Миграции БД и новые переменные `.env`
+для этих изменений не нужны. Локальное `.venv` не используется контейнерами.
+
+## 1. Подготовить обновление
+
+Выполняйте команды на рабочем сервере из каталога проекта:
+
+```bash
+cd /путь/к/bakhrushin_tg
+docker compose ps
+git status --short
+```
+
+Изменения должны быть доставлены в репозиторий/пакет обновления до начала установки.
+Локальные незакоммиченные правки из среды разработки автоматически на сервер
+не попадут. В обновление обязательно включите новый `app/collectors/browser.py`,
+а также изменения Dockerfile, requirements.txt, сборщика, парсера, API,
+Celery-задач, seed-конфигурации и `app/tg/bot.py`.
+
+Если на сервере есть локальные изменения, сохраните их отдельно и согласуйте
+с обновлением. Не заменяйте рабочие `.env` и `docker-compose.yml` шаблонами.
+
+Сохраните текущий commit и резервную копию конфигурации и БД:
+
+```bash
+umask 077
+UPDATE_BACKUP_DIR="$(pwd)/backups/update-$(date +%Y%m%d-%H%M%S)"
+mkdir -p "$UPDATE_BACKUP_DIR"
+git rev-parse HEAD > "$UPDATE_BACKUP_DIR/previous-commit.txt"
+cp .env docker-compose.yml "$UPDATE_BACKUP_DIR/"
+docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB"' > "$UPDATE_BACKUP_DIR/database.sql"
+test -s "$UPDATE_BACKUP_DIR/database.sql"
+```
+
+Убедитесь, что `pg_dump` завершился без ошибки. Каталог резервных копий содержит
+секреты; храните его вне публичного доступа и не добавляйте в Git.
+
+## 2. Остановить приложение и получить код
+
+Код проекта смонтирован в контейнеры через `./:/app`. Поэтому остановите
+сервисы приложения **до** замены файлов. Celery получает время на завершение
+текущих задач; проверьте, что они завершились, прежде чем продолжать.
+
+```bash
+docker compose stop celery_beat
+docker compose stop -t 300 celery_worker tg_bot api
+```
+
+PostgreSQL и Redis остаются запущенными. Веб-панель и обработка новостей будут
+недоступны до завершения обновления.
+
+Если обновление опубликовано в текущей Git-ветке и рабочие файлы чистые:
+
+```bash
+git pull --ff-only
+```
+
+Если используется пакет файлов, установите согласованный пакет вместо `git pull`.
+Не удаляйте `.env`, данные PostgreSQL и локальную конфигурацию.
+
+## 3. Пересобрать и запустить контейнеры
+
+```bash
+docker compose build api celery_worker celery_beat tg_bot
+docker compose up -d --no-deps api celery_worker tg_bot
+```
+
+При сборке Dockerfile установит Playwright, Chromium и необходимые системные
+библиотеки. Нужен доступ сервера к Python-реестру, Debian-репозиториям и CDN
+Playwright, а также свободное место для образов и браузера. Если сборка не
+завершилась, не переходите к включению планировщика.
+
+Простой `docker compose restart` не установит новые зависимости.
+Устанавливать Playwright вручную внутри рабочего контейнера не требуется.
+
+## 4. Включить браузерный режим Большого театра
+
+В веб-панели откройте «Источники» → «Большой театр — Новости» → редактирование.
+Сохраните предыдущий `parser_config` для отката. Добавьте следующие поля
+к существующему JSON, сохранив фильтры ссылок и остальные настройки:
+
+```json
+{
+  "fetch_mode": "browser",
+  "browser_timeout_ms": 45000,
+  "browser_wait_selector": "a[href*='/news/']"
+}
+```
+
+Это фрагмент конфигурации, а не полная замена существующего JSON.
+Если источник был отключён после ошибок, включите его после успешного теста.
+
+Не запускайте общий `seed_sources` только для этого изменения: он обновляет
+конфигурации существующих источников и может заменить ваши настройки.
+
+## 5. Проверить обновление
+
+```bash
+docker compose ps
+docker compose logs --tail=100 api celery_worker tg_bot
+```
+
+Проверьте запуск Chromium внутри рабочего контейнера:
+
+```bash
+docker compose exec -T celery_worker python - <<'PY'
+from importlib.metadata import version
+from playwright.sync_api import sync_playwright
+
+print('Playwright:', version('playwright'))
+with sync_playwright() as p:
+    browser = p.chromium.launch(headless=True, channel='chromium')
+    page = browser.new_page()
+    page.goto('data:text/html,<title>Browser OK</title><body>OK</body>')
+    assert page.title() == 'Browser OK'
+    print('Chromium:', browser.version, 'OK')
+    browser.close()
+PY
+```
+
+В веб-панели нажмите «Тест» для Большого театра. Ожидается HTTP 200 и отсутствие
+`last_error`. Этот тест проверяет загрузку списка, а не полных статей.
+
+Для отдельной проверки списка и первой статьи без записи в БД, вызовов AI
+и публикации в Telegram:
+
+```bash
+docker compose exec -T celery_worker python - <<'PY'
+from app.collectors.browser import browser_fetcher
+from app.collectors.html import fetch_html_entries
+from app.parsers.extract import extract_main_text
+
+config = {
+    'fetch_mode': 'browser',
+    'browser_timeout_ms': 45000,
+    'browser_wait_selector': "a[href*='/news/']",
+    'include_regex': [r'bolshoi\.ru/(ru/|en/)?news/'],
+    'exclude_regex': [r'/news/?$'],
+    'same_domain': True,
+    'max_items': 3,
+}
+with browser_fetcher(config) as fetcher:
+    entries = fetch_html_entries('https://bolshoi.ru/news', config, fetcher=fetcher)
+    assert entries, 'Не найдены ссылки на новости'
+    print('Найдено ссылок:', len(entries))
+    text, _ = extract_main_text(entries[0]['url'], fetcher=fetcher)
+    assert text.strip(), 'Пустой текст статьи'
+    print('Статья:', entries[0]['url'])
+    print('Длина текста:', len(text))
+PY
+```
+
+При ошибке `Executable doesn't exist` проверьте, что контейнер пересоздан из
+нового образа и сборка завершила установку Chromium. При таймауте/401/403
+проверьте доступ с рабочего сервера: успешный запуск браузера не гарантирует
+прохождение защиты сайта с его IP. CAPTCHA автоматически не решается.
+
+## 6. Возобновить расписание
+
+После успешных проверок:
+
+```bash
+docker compose up -d --no-deps celery_beat
+docker compose ps
+docker compose logs --tail=100 celery_worker celery_beat
+```
+
+Убедитесь, что работает только один экземпляр Celery Beat. После очередного
+сбора проверьте состояние источника и новые материалы в панели. При включении
+Beat возобновятся все его задачи, включая AI и публикацию одобренных постов.
+
+## Откат
+
+Остановите планировщик и сервисы приложения теми же командами, что в шаге 2.
+Восстановите предыдущую версию кода вашим обычным механизмом релизов; commit
+сохранён в `previous-commit.txt`. Затем пересоберите и запустите сервисы:
+
+```bash
+docker compose build api celery_worker celery_beat tg_bot
+docker compose up -d --no-deps api celery_worker tg_bot
+```
+
+Восстановите прежний `parser_config` Большого театра через веб-панель и его
+предыдущее состояние enabled. При необходимости оставьте источник отключённым,
+поскольку старая версия не поддерживает браузерный режим. После проверки
+запустите `celery_beat`.
+
+Для отката этого обновления восстановление БД обычно не требуется: схема не
+менялась. Восстановление резервной копии удалит более новые изменения данных,
+поэтому применяйте его только при отдельной необходимости. Не используйте
+`docker compose down -v`: эта команда удаляет том с рабочей БД.

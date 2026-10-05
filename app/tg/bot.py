@@ -30,16 +30,20 @@ def kb_for_post(post_id: int):
 async def start(m: Message):
     if not is_admin(m.from_user.id):
         return await m.answer("Access denied.")
-    await m.answer("Bakhrushin moderation bot.
-Commands:
-/queue — show pending
-/help")
+    await m.answer(
+        "Bakhrushin moderation bot.\n"
+        "Commands:\n"
+        "/queue — show pending\n"
+        "/help"
+    )
 
 @dp.message(Command("help"))
 async def help_cmd(m: Message):
-    await m.answer("Commands:
-/queue — show pending posts
-You can also reply with new text after pressing Edit.")
+    await m.answer(
+        "Commands:\n"
+        "/queue — show pending posts\n"
+        "You can also reply with new text after pressing Edit."
+    )
 
 @dp.message(Command("queue"))
 async def queue(m: Message):
