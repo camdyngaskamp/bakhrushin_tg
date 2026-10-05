@@ -4,15 +4,18 @@ import time
 
 import httpx
 
+from app.collectors.browser_state import browser_state
+
 
 class BrowserFetchError(RuntimeError):
     pass
 
 
 class BrowserFetcher:
-    def __init__(self, context, timeout_ms=45000):
+    def __init__(self, context, timeout_ms=45000, state=None):
         self.context = context
         self.timeout_ms = timeout_ms
+        self.state = state
 
     def fetch(self, url, *, wait_selector=None):
         page = self.context.new_page()
@@ -61,7 +64,10 @@ class BrowserFetcher:
             if wait_selector:
                 page.locator(wait_selector).first.wait_for(state="attached", timeout=remaining())
             raise_http_error(diagnostics())
-            return page.content()
+            html = page.content()
+            if self.state is not None:
+                self.state.save(self.context)
+            return html
         except httpx.HTTPStatusError:
             raise
         except Exception as exc:
@@ -75,7 +81,7 @@ class BrowserFetcher:
 
 
 @contextmanager
-def browser_fetcher(config=None):
+def browser_fetcher(config=None, *, headless=True):
     cfg = config or {}
     if cfg.get("fetch_mode", "http") != "browser":
         yield None
@@ -90,13 +96,18 @@ def browser_fetcher(config=None):
     timeout = int(cfg.get("browser_timeout_ms", 45000))
     if not 1000 <= timeout <= 120000:
         raise ValueError("browser_timeout_ms must be between 1000 and 120000")
-    with sync_playwright() as playwright:
-        browser = playwright.chromium.launch(headless=True, channel="chromium")
-        try:
-            context = browser.new_context(locale="ru-RU")
+    with browser_state(cfg.get("browser_state_name")) as state:
+        saved_state = state.load() if state is not None else None
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(headless=headless, channel="chromium")
             try:
-                yield BrowserFetcher(context, timeout)
+                options = {"locale": "ru-RU"}
+                if saved_state is not None:
+                    options["storage_state"] = saved_state
+                context = browser.new_context(**options)
+                try:
+                    yield BrowserFetcher(context, timeout, state=state)
+                finally:
+                    context.close()
             finally:
-                context.close()
-        finally:
-            browser.close()
+                browser.close()

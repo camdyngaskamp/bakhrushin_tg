@@ -84,6 +84,15 @@ class BrowserCollectorTests(unittest.TestCase):
         page.content.return_value = '<html>News</html>'
         self.assertEqual(BrowserFetcher(context).fetch('https://example.org'), '<html>News</html>')
 
+    def test_denied_page_does_not_overwrite_saved_session(self):
+        context = MagicMock()
+        page = context.new_page.return_value
+        state = MagicMock()
+        page.wait_for_function.side_effect = RuntimeError('timeout')
+        with self.assertRaises(BrowserFetchError):
+            BrowserFetcher(context, state=state).fetch('https://example.org')
+        state.save.assert_not_called()
+
     def test_http_mode_does_not_require_playwright(self):
         with browser_fetcher({}) as fetcher:
             self.assertIsNone(fetcher)

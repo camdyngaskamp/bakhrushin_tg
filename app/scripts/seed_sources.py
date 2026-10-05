@@ -26,6 +26,7 @@ START_SOURCES = [
         "url": "https://bolshoi.ru/news",
         "parser_config": {
             "fetch_mode": "browser",
+            "browser_state_name": "bolshoi",
             "browser_wait_selector": "a[href*='/news/']",
             "include_regex": [r"bolshoi\.ru/(ru/|en/)?news/"],
             "exclude_regex": [r"/news/?$"],

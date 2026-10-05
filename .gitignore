@@ -57,7 +57,6 @@ celerybeat.pid
 alembic.ini.bak
 
 # Docker
-.dockerignore
 
 # Temporary files
 *.tmp
@@ -126,3 +125,6 @@ celerybeat-schedule
 # OS files
 .DS_Store
 Thumbs.db
+
+# Private browser cookies and local storage
+.browser-state/

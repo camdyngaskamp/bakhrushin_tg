@@ -135,7 +135,12 @@ source's `parser_config` (merge these keys into the existing configuration):
 ```
 
 The worker uses one browser context for the listing and full articles, preserving
-cookies during the source run. The **Test** button uses the same transport.
+cookies during the source run. For persistence between runs, add
+`"browser_state_name": "bolshoi"` to the source configuration. Successful pages
+save Playwright state in `.browser-state/bolshoi.json`; later runs reuse it.
+Failed loads do not replace saved state. See the
+[cookie session setup instructions](docs/UPDATE_BROWSER_COLLECTOR.md#эксперимент-сохранять-cookies-между-запусками)
+for creating a session in a visible browser and importing it on the server. The **Test** button uses the same transport.
 The selector is optional and should identify loaded content, not navigation.
 Timeouts and unresolved challenges are reported as source errors; CAPTCHA solving
 is not implemented. HTTP remains the default for other sources.
