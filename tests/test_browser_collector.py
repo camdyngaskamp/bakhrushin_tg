@@ -27,8 +27,13 @@ class BrowserCollectorTests(unittest.TestCase):
     def test_initial_challenge_status_does_not_override_final_success(self):
         context = MagicMock()
         page = context.new_page.return_value
-        page.goto.return_value.status = 401
-        page.evaluate.return_value = 200
+        def navigate(*args, **kwargs):
+            callback = page.on.call_args.args[1]
+            for status in (401, 200):
+                response = MagicMock(status=status, frame=page.main_frame)
+                response.request.is_navigation_request.return_value = True
+                callback(response)
+        page.goto.side_effect = navigate
         page.content.return_value = '<html>Новости</html>'
         self.assertEqual(BrowserFetcher(context).fetch('https://example.org'), '<html>Новости</html>')
         page.close.assert_called_once()
@@ -36,19 +41,48 @@ class BrowserCollectorTests(unittest.TestCase):
     def test_final_http_error_is_not_success(self):
         context = MagicMock()
         page = context.new_page.return_value
-        page.evaluate.return_value = 403
+        def navigate(*args, **kwargs):
+            response = MagicMock(status=403, frame=page.main_frame)
+            response.request.is_navigation_request.return_value = True
+            page.on.call_args.args[1](response)
+        page.goto.side_effect = navigate
         with self.assertRaises(httpx.HTTPStatusError):
             BrowserFetcher(context).fetch('https://example.org')
+        page.locator.return_value.first.wait_for.assert_not_called()
         page.close.assert_called_once()
 
     def test_unresolved_challenge_closes_page(self):
         context = MagicMock()
         page = context.new_page.return_value
         page.wait_for_function.side_effect = RuntimeError('timeout')
-        with self.assertRaises(BrowserFetchError):
+        with self.assertRaisesRegex(BrowserFetchError, 'http_status'):
             BrowserFetcher(context).fetch('https://example.org')
         page.content.assert_not_called()
         page.close.assert_called_once()
+
+    def test_missing_selector_reports_page_details(self):
+        context = MagicMock()
+        page = context.new_page.return_value
+        page.url = 'https://example.org/news'
+        page.title.return_value = 'Access denied'
+        page.locator.return_value.count.return_value = 0
+        page.locator.return_value.first.wait_for.side_effect = RuntimeError('selector timeout')
+        with self.assertRaisesRegex(BrowserFetchError, 'Access denied'):
+            BrowserFetcher(context).fetch('https://example.org/news', wait_selector='.news')
+        page.close.assert_called_once()
+
+    def test_subresource_error_does_not_replace_document_status(self):
+        context = MagicMock()
+        page = context.new_page.return_value
+        def navigate(*args, **kwargs):
+            callback = page.on.call_args.args[1]
+            for status, navigation in ((200, True), (403, False)):
+                response = MagicMock(status=status, frame=page.main_frame)
+                response.request.is_navigation_request.return_value = navigation
+                callback(response)
+        page.goto.side_effect = navigate
+        page.content.return_value = '<html>News</html>'
+        self.assertEqual(BrowserFetcher(context).fetch('https://example.org'), '<html>News</html>')
 
     def test_http_mode_does_not_require_playwright(self):
         with browser_fetcher({}) as fetcher:

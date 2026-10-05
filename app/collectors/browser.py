@@ -19,30 +19,57 @@ class BrowserFetcher:
         deadline = time.monotonic() + self.timeout_ms / 1000
         def remaining():
             return max(1, int((deadline - time.monotonic()) * 1000))
+        document_status = None
+
+        def record_document_response(response):
+            nonlocal document_status
+            if response.request.is_navigation_request() and response.frame == page.main_frame:
+                document_status = response.status
+
+        def diagnostics():
+            # Do not log cookies, request headers or article contents.
+            try:
+                return {
+                    "url": page.url,
+                    "title": page.title(),
+                    "http_status": document_status,
+                    "qrator_script": page.locator('script[src*="/__qrator/"]').count() > 0,
+                    "links": page.locator("a[href]").count(),
+                    "wait_selector": wait_selector,
+                }
+            except Exception:
+                return {"http_status": document_status, "wait_selector": wait_selector}
+
+        def raise_http_error(details):
+            if document_status is not None and document_status >= 400:
+                raise httpx.HTTPStatusError(
+                    f"Browser returned HTTP {document_status} for {url}; page={details}",
+                    request=httpx.Request("GET", url),
+                    response=httpx.Response(document_status),
+                )
+
+        page.on("response", record_document_response)
         try:
-            response = page.goto(url, wait_until="domcontentloaded", timeout=remaining())
+            page.goto(url, wait_until="domcontentloaded", timeout=remaining())
             # Challenge scripts may navigate after the initial 401 response.
             page.wait_for_function(
                 """() => !document.querySelector('script[src*="/__qrator/"]')
                     && document.body && document.body.innerText.trim().length > 0""",
                 timeout=remaining(),
             )
+            raise_http_error(diagnostics())
             if wait_selector:
                 page.locator(wait_selector).first.wait_for(state="attached", timeout=remaining())
-            # Read the current document status, rather than the initial challenge status.
-            status = page.evaluate("() => performance.getEntriesByType('navigation')[0]?.responseStatus || 0")
-            status = int(status or (response.status if response else 0))
-            if status >= 400:
-                raise httpx.HTTPStatusError(
-                    f"Browser returned HTTP {status} for {url}",
-                    request=httpx.Request("GET", url),
-                    response=httpx.Response(status),
-                )
+            raise_http_error(diagnostics())
             return page.content()
         except httpx.HTTPStatusError:
             raise
         except Exception as exc:
-            raise BrowserFetchError(f"Browser could not load {url}: {exc}") from exc
+            details = diagnostics()
+            raise_http_error(details)
+            raise BrowserFetchError(
+                f"Browser could not load {url}; page={details}; reason={exc}"
+            ) from exc
         finally:
             page.close()
 
